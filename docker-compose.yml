@@ -1,0 +1,124 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: goto-automation-db
+    environment:
+      POSTGRES_DB: goto_automation
+      POSTGRES_USER: goto_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goto_user -d goto_automation"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goto-network
+
+  # Redis (for background jobs)
+  redis:
+    image: redis:7-alpine
+    container_name: goto-automation-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - goto-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: goto-automation-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://goto_user:${DB_PASSWORD:-changeme}@postgres:5432/goto_automation
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - audio_storage:/tmp/goto-automation
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - goto-network
+
+  # Background Worker (for async tasks)
+  # NOTE: Disabled - System uses FastAPI BackgroundTasks instead of Celery
+  # To enable Celery in future: create worker.py, add celery to requirements.txt
+  # worker:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: goto-automation-worker
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     DATABASE_URL: postgresql://goto_user:${DB_PASSWORD:-changeme}@postgres:5432/goto_automation
+  #     REDIS_URL: redis://redis:6379/0
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #     - backend
+  #   volumes:
+  #     - ./backend:/app
+  #     - audio_storage:/tmp/goto-automation
+  #   command: celery -A worker worker --loglevel=info
+  #   networks:
+  #     - goto-network
+
+  # Frontend Dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000/api
+    container_name: goto-automation-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - goto-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  audio_storage:
+    driver: local
+
+networks:
+  goto-network:
+    driver: bridge

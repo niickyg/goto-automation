@@ -1,0 +1,21 @@
+{
+  "event_type": "call.ended",
+  "timestamp": "2025-01-15T14:30:45Z",
+  "data": {
+    "call_id": "GOTO-CALL-123456789",
+    "direction": "inbound",
+    "caller": {
+      "number": "+1-555-123-4567",
+      "name": "John Smith"
+    },
+    "called": {
+      "number": "+1-555-987-6543",
+      "name": "Customer Support"
+    },
+    "start_time": "2025-01-15T14:25:00Z",
+    "end_time": "2025-01-15T14:30:45Z",
+    "duration": 345,
+    "recording_url": "https://recordings.goto.com/v1/calls/123456789/recording.mp3",
+    "status": "completed"
+  }
+}

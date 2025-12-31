@@ -1,0 +1,48 @@
+# Environment variables
+.env
+*.env
+!.env.example
+
+# Credentials
+*credentials*
+*secrets*
+*.key
+*.pem
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres-data/
+
+# Logs
+*.log
+logs/
+__pycache__/
+*.pyc
+
+# Docker volumes
+**/data/
+**/cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+
+# Python
+venv/
+env/
+__pycache__/
+*.egg-info/
+dist/
+build/
